@@ -60,7 +60,7 @@ struct deck{
 
 struct player{
 	int position;
-
+	unsigned int player_money;
 };
 //------------------------------------
 
@@ -68,18 +68,47 @@ struct table{
 	struct deck *deck_ptr;
 	struct player *table_players[MAX_PLAYERS];
 	struct card *table_cards[MAX_TABLE_CARDS];
-	
+	unsigned int session_money;
 };
 //------------------------------------
 
 struct server{
-	struct table *main_table;
-	int socket;
-
+	int server_socket;
+	struct sockaddr_in socket_params;
+	struct table *main_table;	
 };
+
+void init_server_socket(struct server *main_server)
+{
+        main_server->server_socket = socket(AF_INET, SOCK_STREAM, 0);
+        main_server->socket_params.sin_family = AF_INET;
+        main_server->socket_params.sin_port = htons(SERVER_PORT);
+        main_server->socket_params.sin_addr.s_addr = htonl(INADDR_ANY);
+}
+void try_to_bind_socket(struct server *main_server)
+{
+        while(-1 == bind(main_server->server_socket,
+                                (struct sockaddr*)&(main_server->socket_params),
+                                sizeof(main_server->socket_params)))
+        {
+		if(DEBUG_PRINT){printf("Trying to bind socket\n");}
+                sleep(2);
+        }
+        if(DEBUG_PRINT){printf("SUCCESSFULLY BINDED!\n");}
+}
+struct server *init_server()
+{
+        struct server *main_server = malloc(sizeof(struct server));
+        init_server_socket(main_server);
+        try_to_bind_socket(main_server);
+        listen(main_server->server_socket, MAX_CONNECTIONS);
+	if(DEBUG_PRINT){ printf("Listening on: %d:%d\n", INADDR_ANY, SERVER_PORT); }
+        //main_server->main_table = init_table();
+	return main_server;
+}
 //------------------------------------
 
 int main()
 {
-
+	struct server *main_server = init_server();
 }
