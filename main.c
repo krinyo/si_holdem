@@ -32,7 +32,7 @@
 
 #define SERVER_PORT     14888
 #define MAX_CONNECTIONS 2
-
+#define RECONNECT_COUNT	5
 /*DEBUG*/
 #ifdef DEBUG
 #define DEBUG_PRINT     1
@@ -53,7 +53,7 @@ struct card{
 //------------------------------------
 struct deck{
 	int size;
-	struct card *first_card[DECK_SIZE];	
+	struct card first_card[DECK_SIZE];	
 };
 
 //------------------------------------
@@ -66,8 +66,8 @@ struct player{
 
 struct table{
 	struct deck *deck_ptr;
-	struct player *table_players[MAX_PLAYERS];
-	struct card *table_cards[MAX_TABLE_CARDS];
+	struct player table_players[MAX_PLAYERS];
+	struct card table_cards[MAX_TABLE_CARDS];
 	unsigned int session_money;
 };
 //------------------------------------
@@ -75,7 +75,8 @@ struct table{
 struct server{
 	int server_socket;
 	struct sockaddr_in socket_params;
-	struct table *main_table;	
+	struct table *main_table;
+	int descriptors[MAX_PLAYERS];	
 };
 
 void init_server_socket(struct server *main_server)
@@ -99,12 +100,31 @@ void try_to_bind_socket(struct server *main_server)
 struct server *init_server()
 {
         struct server *main_server = malloc(sizeof(struct server));
-        init_server_socket(main_server);
+        
+	init_server_socket(main_server);
         try_to_bind_socket(main_server);
         listen(main_server->server_socket, MAX_CONNECTIONS);
+	
 	if(DEBUG_PRINT){ printf("Listening on: %d:%d\n", INADDR_ANY, SERVER_PORT); }
-        //main_server->main_table = init_table();
+        
+	//main_server->main_table = init_table();
 	return main_server;
+}
+void wait_for_clients(struct server *main_server)
+{
+	int conn_counter = 0;
+	int conn_tryings = 0;
+	int client_desc;
+	int server_socket = main_server->server_socket;
+	while(conn_counter < MIN_PLAYERS && conn_tryings < RECONNECT_COUNT){
+        	if((client_desc = accept(server_socket, NULL, NULL)) != -1){
+			if(DEBUG_PRINT){printf("ACCEPTED!\n");}
+                        conn_counter ++;
+                }
+		if(DEBUG_PRINT){printf("WAITING FOR PLAYERS!\n");}
+		conn_tryings ++;
+		sleep(2);
+	}
 }
 //------------------------------------
 
