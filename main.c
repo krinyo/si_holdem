@@ -38,7 +38,7 @@
 #define WAIT_TIMEOUT    5
 
 //FRONTEND
-#include <curses.h>
+#include <ncurses.h>
 
 /*DEBUG*/
 #ifdef DEBUG
@@ -333,20 +333,27 @@ void give_cards_to_all_players(struct table *main_table, struct deck *deck_ptr)
 void show_table_to_players(struct table *main_table)
 {
 	int i;
+	FILE *fh;
 	SCREEN *scr;
 	WINDOW *pl_win;
 	for(i = 0; i < main_table->players_count; i ++){
-		scr = main_table->players[i].player_screen;
+		//scr = main_table->players[i].player_screen;
+		//set_term(scr);
+		//pl_win = main_table->players[i].player_window;
+		//box(pl_win, 0, 0);
+		//mvwprintw(pl_win, 20/2, (40-18)/2, "WELCOME TO THE GAME!");
+		fh = fdopen(main_table->players[i].descriptor, "rw");
+		scr = newterm(getenv("TERM"), fh, fh);
 		set_term(scr);
-		pl_win = main_table->players[i].player_window;
+		pl_win = newwin(20, 40, 1, 2);
 		box(pl_win, 0, 0);
-		mvwprintw(pl_win, 20/2, (40-18)/2, "WELCOME TO THE GAME!");
+		mvwprintw(pl_win, 20/2, (40-18)/2, "WLCOME");
 	}	
 }
 //--------------------------------------------//
 int main()
 {
-	
+	srand(time(NULL));	
 
 	struct server *main_server = init_server();
 	struct table *main_table = init_table();
