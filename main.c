@@ -8,11 +8,9 @@
 #define ONE_NUMBER_SIZE 3
 #define UNICODE_EL_SIZE 4
 //TABLE
-#define MAX_TABLE_CARDS  5
+#define MAX_TABLE_CARDS 5
 #define MAX_PLAYERS     2
 #define MIN_PLAYERS     2
-#define TABLE_SIZE_X    16
-#define TABLE_SIZE_Y    8
 #define START_STATE     1
 #define START_SES_MONEY 0
 #define START_TAB_CARDS 0
@@ -299,14 +297,17 @@ void place_players_to_table(struct server *main_server,
 	WINDOW *win;
 	for(desc_counter = 0; desc_counter < main_server->desc_count; desc_counter ++){
 		fd = fdopen(main_server->descriptors[desc_counter], "rw");
-		scr = newterm(NULL, fd, fd);
+		scr = newterm(getenv("TERM"), fd, fd);
 		set_term(scr);
-		win = newwin(20, 40, 1, 2);
-		main_table->players[desc_counter] = init_player(desc_counter,
+		win = newwin(13, 42, 1, 2);
+		mvwprintw(win, 13/2, 42/2, "Enter e to play:");
+		if(wgetch(win) == 'e'){
+			main_table->players[desc_counter] = init_player(desc_counter,
 					TEST_PLAYER_MON,
 					main_server->descriptors[desc_counter],
 					fd, scr, win, "PLAYER");
-		main_table->players_count ++;
+			main_table->players_count ++;
+		}
 	}
 	main_server->desc_count = 0;
 }
@@ -332,22 +333,33 @@ void give_cards_to_all_players(struct table *main_table, struct deck *deck_ptr)
 }
 void show_table_to_players(struct table *main_table)
 {
-	int i;
-	FILE *fh;
+	int i, width, height;
+	//FILE *fh;
 	SCREEN *scr;
 	WINDOW *pl_win;
 	for(i = 0; i < main_table->players_count; i ++){
-		//scr = main_table->players[i].player_screen;
-		//set_term(scr);
-		//pl_win = main_table->players[i].player_window;
-		//box(pl_win, 0, 0);
-		//mvwprintw(pl_win, 20/2, (40-18)/2, "WELCOME TO THE GAME!");
-		fh = fdopen(main_table->players[i].descriptor, "rw");
-		scr = newterm(getenv("TERM"), fh, fh);
+		scr = main_table->players[i].player_screen;
+		pl_win = main_table->players[i].player_window;
 		set_term(scr);
-		pl_win = newwin(20, 40, 1, 2);
-		box(pl_win, 0, 0);
-		mvwprintw(pl_win, 20/2, (40-18)/2, "WLCOME");
+		wclear(pl_win);
+
+		box(pl_win, 1, 0);
+		mvwprintw(pl_win, 0, 0, "Fold");
+		mvwprintw(pl_win, 0, 5, "Check");
+		mvwprintw(pl_win, 0, 11, "Raise");
+		
+		mvwprintw(pl_win, 10, 21, main_table->players[i].nickname);
+		//mvwprintw(pl_win, 1, 31, main_table->players[i].player_money);
+
+		mvwprintw(pl_win, 11, 21, main_table->players[i].player_cards[0].number);
+		mvwprintw(pl_win, 11, 24, main_table->players[i].player_cards[0].suit);
+
+		mvwprintw(pl_win, 11, 28, main_table->players[i].player_cards[1].number);
+		mvwprintw(pl_win, 11, 32, main_table->players[i].player_cards[1].suit);
+
+		wmove(pl_win, 12, 0);	
+		wrefresh(pl_win);
+		//wgetch(pl_win);
 	}	
 }
 //--------------------------------------------//
