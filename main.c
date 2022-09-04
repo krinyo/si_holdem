@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+
+#include <locale.h>
+
 //DECK
 #define DECK_SIZE       52
 #define SUITS_SIZE      4
@@ -46,6 +49,8 @@
 #endif
 
 const char suits[SUITS_SIZE][UNICODE_EL_SIZE] = {"♠", "♥", "♦", "♣"};
+//const char suits[SUITS_SIZE][UNICODE_EL_SIZE] = {"<3<", "<3", "<>", "+"};
+
 const char numbers[NUMBERS_SIZE][ONE_NUMBER_SIZE] = 
         {"2", "3", "4", "5", "6", "7", "8", 
         "9", "10", "J", "Q", "K", "A"};
@@ -220,9 +225,11 @@ void show_table_info(struct table *main_table)
 	printf("%i table money\n", main_table->session_money);
 	printf("%i cards on table\n", main_table->table_cards_count);
 	int i;
+	printf("PLAYERS----------\n");
 	for(i = 0; i < main_table->players_count; i ++){
 		show_player_cards(main_table->players[i]);
 	}
+	printf("TABLE CARDS----------\n");
 	for(i = 0; i < main_table->table_cards_count; i ++){
 		show_card(main_table->table_cards[i]);
 	}
@@ -296,6 +303,7 @@ void place_players_to_table(struct server *main_server,
 	SCREEN *scr;
 	WINDOW *win;
 	for(desc_counter = 0; desc_counter < main_server->desc_count; desc_counter ++){
+		setlocale(LC_ALL, "");
 		fd = fdopen(main_server->descriptors[desc_counter], "rw");
 		scr = newterm(getenv("TERM"), fd, fd);
 		set_term(scr);
@@ -331,9 +339,26 @@ void give_cards_to_all_players(struct table *main_table, struct deck *deck_ptr)
 		give_cards_to_player(&(main_table->players[i]), deck_ptr);
 	}
 }
+void put_cards_to_table(struct table *main_table, struct deck *deck_ptr, int count)
+{
+	int i;
+	int counter = 0;
+	for(i = main_table->table_cards_count; i < count; i ++){
+		sprintf(main_table->table_cards[i].suit, "%s",
+				(deck_ptr->first_card + counter)->suit);
+		sprintf(main_table->table_cards[i].number, "%s",
+				(deck_ptr->first_card + counter)->number);
+		counter ++;
+		main_table->table_cards_count ++;
+		//main_table->cards[i];
+	}
+	remove_cards_from_deck(deck_ptr, count);
+}
 void show_table_to_players(struct table *main_table)
 {
-	int i, width, height;
+	int i;
+
+	//int i, width, height;
 	//FILE *fh;
 	SCREEN *scr;
 	WINDOW *pl_win;
@@ -342,26 +367,38 @@ void show_table_to_players(struct table *main_table)
 		pl_win = main_table->players[i].player_window;
 		set_term(scr);
 		wclear(pl_win);
-
+		
 		box(pl_win, 1, 0);
+		//MENU
 		mvwprintw(pl_win, 0, 0, "Fold");
 		mvwprintw(pl_win, 0, 5, "Check");
 		mvwprintw(pl_win, 0, 11, "Raise");
 		
+		//TABLE
+		mvwprintw(pl_win, 5, 15, main_table->table_cards[0].number);
+		mvwprintw(pl_win, 5, 17, main_table->table_cards[0].suit);
+		mvwprintw(pl_win, 5, 19, main_table->table_cards[1].number);
+		mvwprintw(pl_win, 5, 21, main_table->table_cards[1].suit);
+		mvwprintw(pl_win, 5, 23, main_table->table_cards[2].number);
+		mvwprintw(pl_win, 5, 25, main_table->table_cards[2].suit);
+
+		//PLAYER
 		mvwprintw(pl_win, 10, 21, main_table->players[i].nickname);
 		//mvwprintw(pl_win, 1, 31, main_table->players[i].player_money);
 
 		mvwprintw(pl_win, 11, 21, main_table->players[i].player_cards[0].number);
-		mvwprintw(pl_win, 11, 24, main_table->players[i].player_cards[0].suit);
+		mvwprintw(pl_win, 11, 23, main_table->players[i].player_cards[0].suit);
 
-		mvwprintw(pl_win, 11, 28, main_table->players[i].player_cards[1].number);
-		mvwprintw(pl_win, 11, 32, main_table->players[i].player_cards[1].suit);
+		mvwprintw(pl_win, 11, 26, main_table->players[i].player_cards[1].number);
+		mvwprintw(pl_win, 11, 28, main_table->players[i].player_cards[1].suit);
 
+		//ENDING
 		wmove(pl_win, 12, 0);	
 		wrefresh(pl_win);
 		//wgetch(pl_win);
 	}	
 }
+
 //--------------------------------------------//
 int main()
 {
@@ -376,6 +413,8 @@ int main()
 	give_cards_to_all_players(main_table, main_deck);
 	show_table_info(main_table);
 	show_table_to_players(main_table);
-
+	put_cards_to_table(main_table, main_deck, FLOP_PUT);
+	show_table_to_players(main_table);
+	show_table_info(main_table);
 	sleep(100);
 }
