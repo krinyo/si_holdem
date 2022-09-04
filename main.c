@@ -362,6 +362,8 @@ void show_table_to_players(struct table *main_table)
 	//FILE *fh;
 	SCREEN *scr;
 	WINDOW *pl_win;
+	char player_money_str[256];
+	char table_money[256];
 	for(i = 0; i < main_table->players_count; i ++){
 		scr = main_table->players[i].player_screen;
 		pl_win = main_table->players[i].player_window;
@@ -381,10 +383,17 @@ void show_table_to_players(struct table *main_table)
 		mvwprintw(pl_win, 5, 21, main_table->table_cards[1].suit);
 		mvwprintw(pl_win, 5, 23, main_table->table_cards[2].number);
 		mvwprintw(pl_win, 5, 25, main_table->table_cards[2].suit);
+		
+		sprintf(table_money, "%s", "$");
+		sprintf(table_money + 1, "%d", main_table->session_money);
+		mvwprintw(pl_win, 7, 21, table_money);
 
 		//PLAYER
 		mvwprintw(pl_win, 10, 21, main_table->players[i].nickname);
-		//mvwprintw(pl_win, 1, 31, main_table->players[i].player_money);
+		sprintf(player_money_str, "%s", "$");
+		sprintf(player_money_str + 1, "%d", main_table->players[i].player_money);
+		
+		mvwprintw(pl_win, 12, 11, player_money_str);
 
 		mvwprintw(pl_win, 11, 21, main_table->players[i].player_cards[0].number);
 		mvwprintw(pl_win, 11, 23, main_table->players[i].player_cards[0].suit);
