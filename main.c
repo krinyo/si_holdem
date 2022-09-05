@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include <string.h>
 #include <locale.h>
 
 //DECK
@@ -54,9 +54,17 @@ const char suits[SUITS_SIZE][UNICODE_EL_SIZE] = {"♠", "♥", "♦", "♣"};
 const char numbers[NUMBERS_SIZE][ONE_NUMBER_SIZE] = 
         {"2", "3", "4", "5", "6", "7", "8", 
         "9", "10", "J", "Q", "K", "A"};
-const char player_actions[ACTIONS_COUNT][ACTION_LENGTH] = 
+/*const char player_actions[ACTIONS_COUNT][ACTION_LENGTH] = 
 	{"Fold", "Bet", "Raise",
 	"Re-raise", "Check", "Call"};
+*/
+enum player_actions{
+	Fold = 0,
+	Bet,
+	Raise,
+	Check,
+	Call
+};
 //-------------------------------------
 struct card{
         char number[ONE_NUMBER_SIZE];
@@ -162,6 +170,8 @@ struct player{
 	int player_cards_sum;
 	SCREEN *player_screen;
 	WINDOW *player_window;
+	int is_folded;
+	unsigned int turn_money;
 };
 
 struct player init_player(int table_pos, unsigned int mon,
@@ -178,6 +188,8 @@ struct player init_player(int table_pos, unsigned int mon,
 	current_player->player_window = malloc(sizeof(WINDOW));
 	current_player->player_window = win;
 	sprintf(current_player->nickname, "%s", nickname);
+	current_player->is_folded = 0;
+	current_player->turn_money = 0;
 	return *(current_player);
 }
 void show_player_cards(struct player current_player)
@@ -354,9 +366,24 @@ void put_cards_to_table(struct table *main_table, struct deck *deck_ptr, int cou
 	}
 	remove_cards_from_deck(deck_ptr, count);
 }
+/*void draw_player(struct player *player, WINDOW *pl_win, int draw_cards)
+{
+	int nick_x, nick_y, mon_x, mon_y, c_one_x, c_one_y, c_two_x, c_two_y;
+	*mvwprintw(pl_win, 10, 21, main_table->players[i].nickname);
+
+	sprintf(player_money_str, "%s", "$");
+	sprintf(player_money_str + 1, "%d", main_table->players[i].player_money);
+	mvwprintw(pl_win, 11, 11, player_money_str);
+
+	mvwprintw(pl_win, 11, 21, main_table->players[i].player_cards[0].number);
+	mvwprintw(pl_win, 11, 23, main_table->players[i].player_cards[0].suit);
+
+	mvwprintw(pl_win, 11, 26, main_table->players[i].player_cards[1].number);
+	mvwprintw(pl_win, 11, 28, main_table->players[i].player_cards[1].suit);
+}*/
 void show_table_to_players(struct table *main_table)
 {
-	int i;
+	int i,j;
 
 	//int i, width, height;
 	//FILE *fh;
@@ -364,6 +391,7 @@ void show_table_to_players(struct table *main_table)
 	WINDOW *pl_win;
 	char player_money_str[256];
 	char table_money[256];
+	char turn_money[256];
 	for(i = 0; i < main_table->players_count; i ++){
 		scr = main_table->players[i].player_screen;
 		pl_win = main_table->players[i].player_window;
@@ -383,23 +411,63 @@ void show_table_to_players(struct table *main_table)
 		mvwprintw(pl_win, 5, 21, main_table->table_cards[1].suit);
 		mvwprintw(pl_win, 5, 23, main_table->table_cards[2].number);
 		mvwprintw(pl_win, 5, 25, main_table->table_cards[2].suit);
-		
+		mvwprintw(pl_win, 5, 27, main_table->table_cards[3].number);
+		mvwprintw(pl_win, 5, 29, main_table->table_cards[3].suit);
+		mvwprintw(pl_win, 5, 31, main_table->table_cards[4].number);
+		mvwprintw(pl_win, 5, 33, main_table->table_cards[4].suit);
+		mvwprintw(pl_win, 5, 35, main_table->table_cards[5].number);
+		mvwprintw(pl_win, 5, 37, main_table->table_cards[5].suit);
+
 		sprintf(table_money, "%s", "$");
 		sprintf(table_money + 1, "%d", main_table->session_money);
-		mvwprintw(pl_win, 7, 21, table_money);
+		mvwprintw(pl_win, 6, 21, table_money);
 
-		//PLAYER
-		mvwprintw(pl_win, 10, 21, main_table->players[i].nickname);
+		//PLAYER1
+		sprintf(turn_money, "%s", "$");
+		sprintf(turn_money + 1, "%d", main_table->players[i].turn_money);
+		mvwprintw(pl_win, 8, 18, turn_money);
+
+		mvwprintw(pl_win, 9, 18, main_table->players[i].nickname);
+
 		sprintf(player_money_str, "%s", "$");
 		sprintf(player_money_str + 1, "%d", main_table->players[i].player_money);
+		mvwprintw(pl_win, 10, 18, player_money_str);
+
+		if(i == 0){
+			mvwprintw(pl_win, 11, 18,
+					main_table->players[i].player_cards[0].number);
+			mvwprintw(pl_win, 11, 20,
+					main_table->players[i].player_cards[0].suit);
+			mvwprintw(pl_win, 11, 22,
+				main_table->players[i].player_cards[1].number);
+			mvwprintw(pl_win, 11, 24,
+					main_table->players[i].player_cards[1].suit);
+			mvwprintw(pl_win, 6, 31, "| || |");
+		}
+		//PLAYER2
+		//mvwprintw(pl_win, 8, 18, main_table->players[i].turn_money);
+		sprintf(turn_money, "%s", "$");
+		sprintf(turn_money + 1, "%d", main_table->players[i].turn_money);
+		mvwprintw(pl_win, 3, 31, turn_money);
+	
+		mvwprintw(pl_win, 4, 31, main_table->players[i].nickname);
+
+		sprintf(player_money_str, "%s", "$");
+		sprintf(player_money_str + 1, "%d", main_table->players[i].player_money);
+		mvwprintw(pl_win, 5, 31, player_money_str);
 		
-		mvwprintw(pl_win, 12, 11, player_money_str);
-
-		mvwprintw(pl_win, 11, 21, main_table->players[i].player_cards[0].number);
-		mvwprintw(pl_win, 11, 23, main_table->players[i].player_cards[0].suit);
-
-		mvwprintw(pl_win, 11, 26, main_table->players[i].player_cards[1].number);
-		mvwprintw(pl_win, 11, 28, main_table->players[i].player_cards[1].suit);
+		if(i == 1){
+			mvwprintw(pl_win, 6, 31,
+					main_table->players[i].player_cards[0].number);
+			mvwprintw(pl_win, 6, 33,
+					main_table->players[i].player_cards[0].suit);
+			mvwprintw(pl_win, 6, 35,
+				main_table->players[i].player_cards[1].number);
+			mvwprintw(pl_win, 6, 37,
+					main_table->players[i].player_cards[1].suit);
+			mvwprintw(pl_win, 11, 18, "| || |");
+		}
+		
 
 		//ENDING
 		wmove(pl_win, 12, 0);	
@@ -408,6 +476,32 @@ void show_table_to_players(struct table *main_table)
 	}	
 }
 
+void bet(struct player *current_player, unsigned int count)
+{
+	if(current_player->player_money >= count){
+		current_player->turn_money += count;
+		current_player->player_money -= count;
+	}
+	else{
+	
+	}
+}
+void get_command(struct player *current_player)
+{
+	char buffer[256];
+	read(current_player->descriptor, buffer, sizeof(buffer)-1);
+	int ready = 0;
+	while(!ready){
+		if(buffer == "bet"){
+			bet(current_player, 10);
+			ready = 1;
+		}
+		else{
+			memset(buffer, '0', sizeof(buffer));
+		}
+	}
+
+}
 //--------------------------------------------//
 int main()
 {
@@ -423,6 +517,7 @@ int main()
 	show_table_info(main_table);
 	show_table_to_players(main_table);
 	put_cards_to_table(main_table, main_deck, FLOP_PUT);
+	get_command(&(main_table->players[0]));
 	show_table_to_players(main_table);
 	show_table_info(main_table);
 	sleep(100);
