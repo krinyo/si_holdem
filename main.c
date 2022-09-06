@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <string.h>
+
 #include <locale.h>
 
 //DECK
@@ -27,6 +27,7 @@
 #define TEST_PLAYER_MON 1000
 #define ACTION_LENGTH	8
 #define ACTIONS_COUNT	6
+#define MESSAGE_SIZE	40
 //SERVER
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -172,6 +173,7 @@ struct player{
 	WINDOW *player_window;
 	int is_folded;
 	unsigned int turn_money;
+	char player_message[MESSAGE_SIZE];
 };
 
 struct player init_player(int table_pos, unsigned int mon,
@@ -190,6 +192,7 @@ struct player init_player(int table_pos, unsigned int mon,
 	sprintf(current_player->nickname, "%s", nickname);
 	current_player->is_folded = 0;
 	current_player->turn_money = 0;
+	sprintf(current_player->player_message, "%s", "");
 	return *(current_player);
 }
 void show_player_cards(struct player current_player)
@@ -265,7 +268,11 @@ void init_server_socket(struct server *main_server)
 }
 void try_to_bind_socket(struct server *main_server)
 {
-        while(-1 == bind(main_server->server_socket,
+	int opt = 1;
+	setsockopt(main_server->server_socket, SOL_SOCKET,
+			SO_REUSEADDR, &opt, sizeof(opt));
+        
+	while(-1 == bind(main_server->server_socket,
                                 (struct sockaddr*)&(main_server->socket_params),
                                 sizeof(main_server->socket_params)))
         {
@@ -403,6 +410,7 @@ void show_table_to_players(struct table *main_table)
 		mvwprintw(pl_win, 0, 0, "Fold");
 		mvwprintw(pl_win, 0, 5, "Check");
 		mvwprintw(pl_win, 0, 11, "Raise");
+		mvwprintw(pl_win, 0, 17, "Bet");
 		
 		//TABLE
 		mvwprintw(pl_win, 5, 15, main_table->table_cards[0].number);
@@ -424,53 +432,57 @@ void show_table_to_players(struct table *main_table)
 
 		//PLAYER1
 		sprintf(turn_money, "%s", "$");
-		sprintf(turn_money + 1, "%d", main_table->players[i].turn_money);
+		sprintf(turn_money + 1, "%d", main_table->players[0].turn_money);
 		mvwprintw(pl_win, 8, 18, turn_money);
 
-		mvwprintw(pl_win, 9, 18, main_table->players[i].nickname);
+		mvwprintw(pl_win, 9, 18, main_table->players[0].nickname);
 
 		sprintf(player_money_str, "%s", "$");
-		sprintf(player_money_str + 1, "%d", main_table->players[i].player_money);
+		sprintf(player_money_str + 1, "%d", main_table->players[0].player_money);
 		mvwprintw(pl_win, 10, 18, player_money_str);
-
+		
+		mvwprintw(pl_win, 1, 1, main_table->players[0].player_message);
+		
 		if(i == 0){
 			mvwprintw(pl_win, 11, 18,
-					main_table->players[i].player_cards[0].number);
+					main_table->players[0].player_cards[0].number);
 			mvwprintw(pl_win, 11, 20,
-					main_table->players[i].player_cards[0].suit);
+					main_table->players[0].player_cards[0].suit);
 			mvwprintw(pl_win, 11, 22,
-				main_table->players[i].player_cards[1].number);
+				main_table->players[0].player_cards[1].number);
 			mvwprintw(pl_win, 11, 24,
-					main_table->players[i].player_cards[1].suit);
+					main_table->players[0].player_cards[1].suit);
 			mvwprintw(pl_win, 6, 31, "| || |");
 		}
 		//PLAYER2
 		//mvwprintw(pl_win, 8, 18, main_table->players[i].turn_money);
 		sprintf(turn_money, "%s", "$");
-		sprintf(turn_money + 1, "%d", main_table->players[i].turn_money);
+		sprintf(turn_money + 1, "%d", main_table->players[1].turn_money);
 		mvwprintw(pl_win, 3, 31, turn_money);
 	
-		mvwprintw(pl_win, 4, 31, main_table->players[i].nickname);
+		mvwprintw(pl_win, 4, 31, main_table->players[1].nickname);
 
 		sprintf(player_money_str, "%s", "$");
-		sprintf(player_money_str + 1, "%d", main_table->players[i].player_money);
+		sprintf(player_money_str + 1, "%d", main_table->players[1].player_money);
 		mvwprintw(pl_win, 5, 31, player_money_str);
 		
+		mvwprintw(pl_win, 1, 1, main_table->players[1].player_message);
+
 		if(i == 1){
 			mvwprintw(pl_win, 6, 31,
-					main_table->players[i].player_cards[0].number);
+					main_table->players[1].player_cards[0].number);
 			mvwprintw(pl_win, 6, 33,
-					main_table->players[i].player_cards[0].suit);
+					main_table->players[1].player_cards[0].suit);
 			mvwprintw(pl_win, 6, 35,
-				main_table->players[i].player_cards[1].number);
+				main_table->players[1].player_cards[1].number);
 			mvwprintw(pl_win, 6, 37,
-					main_table->players[i].player_cards[1].suit);
+					main_table->players[1].player_cards[1].suit);
 			mvwprintw(pl_win, 11, 18, "| || |");
 		}
 		
 
 		//ENDING
-		wmove(pl_win, 12, 0);	
+		//wmove(pl_win, 12, 0);	
 		wrefresh(pl_win);
 		//wgetch(pl_win);
 	}	
@@ -483,24 +495,27 @@ void bet(struct player *current_player, unsigned int count)
 		current_player->player_money -= count;
 	}
 	else{
-	
+		sprintf(current_player->player_message, "%s", "not enough money");	
 	}
 }
-void get_command(struct player *current_player)
+void handle_command(struct player *current_player, struct table *main_table)
 {
-	char buffer[256];
-	read(current_player->descriptor, buffer, sizeof(buffer)-1);
-	int ready = 0;
-	while(!ready){
-		if(buffer == "bet"){
-			bet(current_player, 10);
-			ready = 1;
-		}
-		else{
-			memset(buffer, '0', sizeof(buffer));
-		}
-	}
+	char ch;
+	char buff[7];
+	int bet_money;
+	ch = wgetch(current_player->player_window);
 
+	/*switch(ch){
+		case('c'):
+			break;
+		case('b'):
+			recv(current_player->descriptor, buff, 7, 0);
+			bet_money = atoi(buff);
+			bet(current_player, bet_money);		
+			break;
+		case('f'):
+			break;
+	}*/
 }
 //--------------------------------------------//
 int main()
@@ -517,7 +532,9 @@ int main()
 	show_table_info(main_table);
 	show_table_to_players(main_table);
 	put_cards_to_table(main_table, main_deck, FLOP_PUT);
-	get_command(&(main_table->players[0]));
+	handle_command(&(main_table->players[0]), main_table);
+	show_table_to_players(main_table);
+	handle_command(&(main_table->players[1]), main_table);
 	show_table_to_players(main_table);
 	show_table_info(main_table);
 	sleep(100);
