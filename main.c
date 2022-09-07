@@ -316,12 +316,14 @@ void get_client_descriptors(struct server *main_server)
 void place_players_to_table(struct server *main_server,
 		struct table *main_table)
 {
+	char nickname[8];
 	get_client_descriptors(main_server);
 	int desc_counter;
 	FILE *fd;
 	SCREEN *scr;
 	WINDOW *win;
 	for(desc_counter = 0; desc_counter < main_server->desc_count; desc_counter ++){
+		sprintf(nickname, "%s%i", "Player", desc_counter);
 		setlocale(LC_ALL, "");
 		fd = fdopen(main_server->descriptors[desc_counter], "rw");
 		scr = newterm(getenv("TERM"), fd, fd);
@@ -332,7 +334,7 @@ void place_players_to_table(struct server *main_server,
 			main_table->players[desc_counter] = init_player(desc_counter,
 					TEST_PLAYER_MON,
 					main_server->descriptors[desc_counter],
-					fd, scr, win, "PLAYER");
+					fd, scr, win, nickname);
 			main_table->players_count ++;
 		}
 	}
@@ -407,10 +409,10 @@ void show_table_to_players(struct table *main_table)
 		
 		box(pl_win, 1, 0);
 		//MENU
-		mvwprintw(pl_win, 0, 0, "Fold");
-		mvwprintw(pl_win, 0, 5, "Check");
-		mvwprintw(pl_win, 0, 11, "Raise");
-		mvwprintw(pl_win, 0, 17, "Bet");
+		mvwprintw(pl_win, 0, 0, "[F]old");
+		mvwprintw(pl_win, 0, 7, "[C]heck");
+		//mvwprintw(pl_win, 0, 11, "Raise");
+		mvwprintw(pl_win, 0, 12, "[B]et'number'");
 		
 		//TABLE
 		mvwprintw(pl_win, 5, 15, main_table->table_cards[0].number);
@@ -482,7 +484,7 @@ void show_table_to_players(struct table *main_table)
 		
 
 		//ENDING
-		//wmove(pl_win, 12, 0);	
+		wmove(pl_win, 12, 0);	
 		wrefresh(pl_win);
 		//wgetch(pl_win);
 	}	
@@ -503,19 +505,82 @@ void handle_command(struct player *current_player, struct table *main_table)
 	char ch;
 	char buff[7];
 	int bet_money;
-	ch = wgetch(current_player->player_window);
+	sprintf(current_player->player_message, "%s %d", "Turn of Player",
+			current_player->table_position);
+	show_table_to_players(main_table);
+	set_term(current_player->player_screen);
+		
+test_command:
+	if(wgetch(current_player->player_window) == 'b'){
+		recv(current_player->descriptor, buff, 7, 0);
+		if((bet_money = atoi(buff)) != 0){
+			bet(current_player, bet_money);
+		}
+		else{
+			goto test_command;
+		}
+	}
+	else if(wgetch(current_player->player_window) == 'c')
+	{
+		
+	}
+	else if(wgetch(current_player->player_window) == 'f')
+	{
+		current_player->is_folded = 1;	
+	}
+	else{
+		//sprintf(current_player->player_message, "%s", "Not right command");
+		show_table_to_players(main_table);
+		goto test_command;
+	}
+}
+void handle_all_players(struct table *main_table)
+{
+	int i;
+	for(i = 0 ; i < main_table->players_count; i ++){
+		handle_command(&(main_table->players[i]), main_table);
+		show_table_to_players(main_table);
+	}
+}
+int enough_players(struct table *main_table)
+{
+	int players_in_game = main_table->players_count;
+	int players_fold;
+	int i;
+	for(i = 0; i < players_in_game; i ++){
+		if(main_table->players[i].is_folded == 0){
+			players_fold += 1;
+		}
+	}
+	return (players_in_game - players_fold) >= 2 ? 1 : 0;
+}
 
-	/*switch(ch){
-		case('c'):
-			break;
-		case('b'):
-			recv(current_player->descriptor, buff, 7, 0);
-			bet_money = atoi(buff);
-			bet(current_player, bet_money);		
-			break;
-		case('f'):
-			break;
-	}*/
+int equal_players_betting(struct table *main_table)
+{
+	int i;
+	int pre;
+	for(i = 0 ; i < main_table->players_count; i ++){
+		if(i == 0){
+			pre = main_table->players[i].turn_money;
+		}
+		else{
+			if(main_table->players[i].turn_money != pre){
+				return 0;
+			}
+		}
+	}
+}
+void make_blinds(struct table *main_table)
+{
+	int i;
+	for(i = 0; i < main_table->players_count; i ++){
+		if(i == 0){
+			main_table->players[i].turn_money = 10;
+		}
+		if(i == 1){
+			main_table->players[i].turn_money = 15;
+		}
+	}
 }
 //--------------------------------------------//
 int main()
@@ -529,13 +594,28 @@ int main()
 	place_players_to_table(main_server, main_table);
 	shuffle_deck(main_deck);
 	give_cards_to_all_players(main_table, main_deck);
+	make_blinds(main_table);
 	show_table_info(main_table);
 	show_table_to_players(main_table);
+	while(!equal_players_betting(main_table) || enough_players(main_table)){
+		handle_all_players(main_table);
+	}
 	put_cards_to_table(main_table, main_deck, FLOP_PUT);
-	handle_command(&(main_table->players[0]), main_table);
 	show_table_to_players(main_table);
-	handle_command(&(main_table->players[1]), main_table);
+	while(!equal_players_betting(main_table) || enough_players(main_table)){
+		handle_all_players(main_table);
+	}
+	put_cards_to_table(main_table, main_deck, TURN_PUT);
 	show_table_to_players(main_table);
+	while(!equal_players_betting(main_table) || enough_players(main_table)){
+		handle_all_players(main_table);
+	}
+	put_cards_to_table(main_table, main_deck, RIVER_PUT);
+	show_table_to_players(main_table);
+	while(!equal_players_betting(main_table) || enough_players(main_table)){
+		handle_all_players(main_table);
+	}
+
 	show_table_info(main_table);
 	sleep(100);
 }
