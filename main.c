@@ -575,10 +575,10 @@ void make_blinds(struct table *main_table)
 	int i;
 	for(i = 0; i < main_table->players_count; i ++){
 		if(i == 0){
-			main_table->players[i].turn_money = 10;
+			bet(main_table->players[i], 10);	
 		}
 		if(i == 1){
-			main_table->players[i].turn_money = 15;
+			bet(main_table->players[i], 15); 
 		}
 	}
 }
