@@ -28,6 +28,7 @@
 #define ACTION_LENGTH	8
 #define ACTIONS_COUNT	6
 #define MESSAGE_SIZE	40
+#define ALL_PLAYER_CDS	7
 //SERVER
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -65,6 +66,19 @@ enum player_actions{
 	Raise,
 	Check,
 	Call
+};
+
+enum combinations{
+	high_card = 0,
+	pair,
+	two_pair,
+	three_of_a_kind,
+	straight,
+	flush,
+	full_house,
+	four_of_a_kind,
+	straight_flush,
+	royal_flush
 };
 //-------------------------------------
 struct card{
@@ -173,6 +187,8 @@ struct player{
 	WINDOW *player_window;
 	int is_folded;
 	unsigned int turn_money;
+	int highest_card_num;
+	int combo_num;
 	//char player_message[MESSAGE_SIZE];
 };
 
@@ -332,6 +348,7 @@ void place_players_to_table(struct server *main_server,
 		set_term(scr);
 		win = newwin(13, 42, 1, 2);
 		mvwprintw(win, 13/2, 42/2, "Enter e to play:");
+		flushinp();
 		if(wgetch(win) == 'e'){
 			main_table->players[desc_counter] = init_player(desc_counter,
 					TEST_PLAYER_MON,
@@ -503,6 +520,39 @@ void bet(struct player *current_player, unsigned int count)
 
 	}
 }
+int compare(char a[], const char b[])
+{
+    int flag = 0,i = 0;  // integer variables declaration
+    while(a[i]!='\0' &&b[i]!='\0')  // while loop
+    {
+       if(a[i]!=b[i])
+       {
+           flag=1;
+           break;
+       }
+       i++;
+    }
+    if(flag==0)
+    	return 1;
+    else
+    	return 0;
+}
+void get_player_highest(struct player *current_player)
+{
+	struct card *player_cards = current_player->player_cards;
+	int i,j,
+	    highest_player_card = 0;
+	for(i = 0; i < NUMBERS_SIZE; i++){
+		for(j = 0; j < PLAYER_CARD_SUM; j ++){
+			if(compare(player_cards[j].number, numbers[i])
+					&& highest_player_card < i ){
+				highest_player_card = i;
+				//break;
+			}
+		}
+	}	
+	current_player->highest_card_num = highest_player_card;
+}
 void handle_command(struct player *current_player, struct table *main_table)
 {
 	char ch;
@@ -548,6 +598,7 @@ void handle_all_players(struct table *main_table)
 {
 	int i;
 	for(i = 0 ; i < main_table->players_count; i ++){
+		get_player_highest(&(main_table->players[i]));
 		handle_command(&(main_table->players[i]), main_table);
 		show_table_to_players(main_table);
 	}
@@ -596,6 +647,7 @@ void players_money_to_table(struct table *main_table)
 		main_table->players[i].turn_money = 0;
 	}
 }
+
 //--------------------------------------------//
 int main()
 {
