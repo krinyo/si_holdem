@@ -173,7 +173,7 @@ struct player{
 	WINDOW *player_window;
 	int is_folded;
 	unsigned int turn_money;
-	char player_message[MESSAGE_SIZE];
+	//char player_message[MESSAGE_SIZE];
 };
 
 struct player init_player(int table_pos, unsigned int mon,
@@ -192,7 +192,7 @@ struct player init_player(int table_pos, unsigned int mon,
 	sprintf(current_player->nickname, "%s", nickname);
 	current_player->is_folded = 0;
 	current_player->turn_money = 0;
-	sprintf(current_player->player_message, "%s", "");
+	//sprintf(current_player->player_message, "%s", "");
 	return *(current_player);
 }
 void show_player_cards(struct player current_player)
@@ -221,6 +221,7 @@ struct table{
 	int table_cards_count;
 	struct card table_cards[MAX_TABLE_CARDS];
 	struct player players[MAX_PLAYERS];
+	char players_message[MESSAGE_SIZE];
 };
 
 struct table *init_table()
@@ -230,6 +231,7 @@ struct table *init_table()
         main_table->players_count = 0;
 	main_table->table_cards_count = 0;
 	main_table->session_money = START_SES_MONEY;
+	sprintf(main_table->players_message, "%s", "");
         return main_table;
 }
 void show_table_info(struct table *main_table)
@@ -362,12 +364,13 @@ void give_cards_to_all_players(struct table *main_table, struct deck *deck_ptr)
 }
 void put_cards_to_table(struct table *main_table, struct deck *deck_ptr, int count)
 {
-	int i;
+	int i, index;
 	int counter = 0;
-	for(i = main_table->table_cards_count; i < count; i ++){
-		sprintf(main_table->table_cards[i].suit, "%s",
+	for(i = 0; i < count; i ++){
+		index = main_table->table_cards_count;
+		sprintf(main_table->table_cards[index].suit, "%s",
 				(deck_ptr->first_card + counter)->suit);
-		sprintf(main_table->table_cards[i].number, "%s",
+		sprintf(main_table->table_cards[index].number, "%s",
 				(deck_ptr->first_card + counter)->number);
 		counter ++;
 		main_table->table_cards_count ++;
@@ -415,18 +418,18 @@ void show_table_to_players(struct table *main_table)
 		mvwprintw(pl_win, 0, 12, "[B]et'number'");
 		
 		//TABLE
-		mvwprintw(pl_win, 5, 15, main_table->table_cards[0].number);
-		mvwprintw(pl_win, 5, 17, main_table->table_cards[0].suit);
-		mvwprintw(pl_win, 5, 19, main_table->table_cards[1].number);
-		mvwprintw(pl_win, 5, 21, main_table->table_cards[1].suit);
-		mvwprintw(pl_win, 5, 23, main_table->table_cards[2].number);
-		mvwprintw(pl_win, 5, 25, main_table->table_cards[2].suit);
-		mvwprintw(pl_win, 5, 27, main_table->table_cards[3].number);
-		mvwprintw(pl_win, 5, 29, main_table->table_cards[3].suit);
-		mvwprintw(pl_win, 5, 31, main_table->table_cards[4].number);
-		mvwprintw(pl_win, 5, 33, main_table->table_cards[4].suit);
-		mvwprintw(pl_win, 5, 35, main_table->table_cards[5].number);
-		mvwprintw(pl_win, 5, 37, main_table->table_cards[5].suit);
+		mvwprintw(pl_win, 5, 5, main_table->table_cards[0].number);
+		mvwprintw(pl_win, 5, 7, main_table->table_cards[0].suit);
+		mvwprintw(pl_win, 5, 9, main_table->table_cards[1].number);
+		mvwprintw(pl_win, 5, 11, main_table->table_cards[1].suit);
+		mvwprintw(pl_win, 5, 13, main_table->table_cards[2].number);
+		mvwprintw(pl_win, 5, 15, main_table->table_cards[2].suit);
+		mvwprintw(pl_win, 5, 17, main_table->table_cards[3].number);
+		mvwprintw(pl_win, 5, 19, main_table->table_cards[3].suit);
+		mvwprintw(pl_win, 5, 21, main_table->table_cards[4].number);
+		mvwprintw(pl_win, 5, 23, main_table->table_cards[4].suit);
+		mvwprintw(pl_win, 5, 25, main_table->table_cards[5].number);
+		mvwprintw(pl_win, 5, 27, main_table->table_cards[5].suit);
 
 		sprintf(table_money, "%s", "$");
 		sprintf(table_money + 1, "%d", main_table->session_money);
@@ -443,7 +446,7 @@ void show_table_to_players(struct table *main_table)
 		sprintf(player_money_str + 1, "%d", main_table->players[0].player_money);
 		mvwprintw(pl_win, 10, 18, player_money_str);
 		
-		mvwprintw(pl_win, 1, 1, main_table->players[0].player_message);
+		mvwprintw(pl_win, 1, 1, main_table->players_message);
 		
 		if(i == 0){
 			mvwprintw(pl_win, 11, 18,
@@ -468,7 +471,7 @@ void show_table_to_players(struct table *main_table)
 		sprintf(player_money_str + 1, "%d", main_table->players[1].player_money);
 		mvwprintw(pl_win, 5, 31, player_money_str);
 		
-		mvwprintw(pl_win, 1, 1, main_table->players[1].player_message);
+		mvwprintw(pl_win, 1, 1, main_table->players_message);
 
 		if(i == 1){
 			mvwprintw(pl_win, 6, 31,
@@ -484,7 +487,7 @@ void show_table_to_players(struct table *main_table)
 		
 
 		//ENDING
-		wmove(pl_win, 12, 0);	
+		wmove(pl_win, 10, 2);	
 		wrefresh(pl_win);
 		//wgetch(pl_win);
 	}	
@@ -497,7 +500,7 @@ void bet(struct player *current_player, unsigned int count)
 		current_player->player_money -= count;
 	}
 	else{
-		sprintf(current_player->player_message, "%s", "not enough money");	
+
 	}
 }
 void handle_command(struct player *current_player, struct table *main_table)
@@ -505,13 +508,17 @@ void handle_command(struct player *current_player, struct table *main_table)
 	char ch;
 	char buff[7];
 	int bet_money;
-	sprintf(current_player->player_message, "%s %d", "Turn of Player",
+
+			
+test_command:
+	sprintf(main_table->players_message , "%s %d", "Turn of Player",
 			current_player->table_position);
 	show_table_to_players(main_table);
 	set_term(current_player->player_screen);
-		
-test_command:
-	if(wgetch(current_player->player_window) == 'b'){
+	wmove(current_player->player_window, 10, 2);
+	flushinp();
+	ch = wgetch(current_player->player_window);
+	if(/*wgetch(current_player->player_window)*/ ch == 'b'){
 		recv(current_player->descriptor, buff, 7, 0);
 		if((bet_money = atoi(buff)) != 0){
 			bet(current_player, bet_money);
@@ -520,16 +527,19 @@ test_command:
 			goto test_command;
 		}
 	}
-	else if(wgetch(current_player->player_window) == 'c')
+	else if(ch == 'c')
 	{
-		
+		wmove(current_player->player_window, 10, 2);
+		printf("This is your char|%c|", ch);		
 	}
-	else if(wgetch(current_player->player_window) == 'f')
+	else if(ch == 'f')
 	{
 		current_player->is_folded = 1;	
 	}
 	else{
-		//sprintf(current_player->player_message, "%s", "Not right command");
+		sprintf(main_table->players_message, "%s", "Not right command");
+		wmove(current_player->player_window, 10, 2);
+		printf("This is your char|%c|", ch);
 		show_table_to_players(main_table);
 		goto test_command;
 	}
@@ -557,28 +567,24 @@ int enough_players(struct table *main_table)
 
 int equal_players_betting(struct table *main_table)
 {
-	int i;
-	int pre;
-	for(i = 0 ; i < main_table->players_count; i ++){
-		if(i == 0){
-			pre = main_table->players[i].turn_money;
-		}
-		else{
-			if(main_table->players[i].turn_money != pre){
-				return 0;
-			}
+	int i,
+	    first = main_table->players[0].turn_money;
+	for(i = 1 ; i < main_table->players_count; i ++){
+		if(first != main_table->players[i].turn_money){
+			return 0;
 		}
 	}
+	return 1;
 }
 void make_blinds(struct table *main_table)
 {
 	int i;
 	for(i = 0; i < main_table->players_count; i ++){
 		if(i == 0){
-			bet(main_table->players[i], 10);	
+			bet(&main_table->players[i], 10);	
 		}
 		if(i == 1){
-			bet(main_table->players[i], 15); 
+			bet(&main_table->players[i], 15); 
 		}
 	}
 }
@@ -597,25 +603,43 @@ int main()
 	make_blinds(main_table);
 	show_table_info(main_table);
 	show_table_to_players(main_table);
-	while(!equal_players_betting(main_table) || enough_players(main_table)){
+	do{
 		handle_all_players(main_table);
+		//handle_command(&main_table->players[0], main_table);
+		//handle_command(&main_table->players[1], main_table);
+
 	}
+	while(!equal_players_betting(main_table));
 	put_cards_to_table(main_table, main_deck, FLOP_PUT);
 	show_table_to_players(main_table);
-	while(!equal_players_betting(main_table) || enough_players(main_table)){
+	
+	do{
+		//handle_command(&main_table->players[0], main_table);
+		//handle_command(&main_table->players[1], main_table);
 		handle_all_players(main_table);
+
 	}
+	while(!equal_players_betting(main_table));
 	put_cards_to_table(main_table, main_deck, TURN_PUT);
 	show_table_to_players(main_table);
-	while(!equal_players_betting(main_table) || enough_players(main_table)){
+
+	do{
+		//handle_command(&main_table->players[0], main_table);
+		//handle_command(&main_table->players[1], main_table);
 		handle_all_players(main_table);
+
 	}
+	while(!equal_players_betting(main_table));
 	put_cards_to_table(main_table, main_deck, RIVER_PUT);
 	show_table_to_players(main_table);
-	while(!equal_players_betting(main_table) || enough_players(main_table)){
-		handle_all_players(main_table);
-	}
 
+	do{
+		//handle_command(&main_table->players[0], main_table);
+		//handle_command(&main_table->players[1], main_table);
+		handle_all_players(main_table);
+
+	}
+	while(!equal_players_betting(main_table));
 	show_table_info(main_table);
 	sleep(100);
 }
