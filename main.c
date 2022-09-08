@@ -415,7 +415,7 @@ void show_table_to_players(struct table *main_table)
 		mvwprintw(pl_win, 0, 0, "[F]old");
 		mvwprintw(pl_win, 0, 7, "[C]heck");
 		//mvwprintw(pl_win, 0, 11, "Raise");
-		mvwprintw(pl_win, 0, 12, "[B]et'number'");
+		mvwprintw(pl_win, 0, 15, "[B]et'number'");
 		
 		//TABLE
 		mvwprintw(pl_win, 5, 5, main_table->table_cards[0].number);
@@ -588,6 +588,14 @@ void make_blinds(struct table *main_table)
 		}
 	}
 }
+void players_money_to_table(struct table *main_table)
+{
+	int i;
+	for(i = 0; i < main_table->players_count; i ++){
+		main_table->session_money += main_table->players[i].turn_money;
+		main_table->players[i].turn_money = 0;
+	}
+}
 //--------------------------------------------//
 int main()
 {
@@ -610,6 +618,7 @@ int main()
 
 	}
 	while(!equal_players_betting(main_table));
+	players_money_to_table(main_table);
 	put_cards_to_table(main_table, main_deck, FLOP_PUT);
 	show_table_to_players(main_table);
 	
@@ -620,6 +629,7 @@ int main()
 
 	}
 	while(!equal_players_betting(main_table));
+	players_money_to_table(main_table);
 	put_cards_to_table(main_table, main_deck, TURN_PUT);
 	show_table_to_players(main_table);
 
@@ -630,6 +640,7 @@ int main()
 
 	}
 	while(!equal_players_betting(main_table));
+	players_money_to_table(main_table);
 	put_cards_to_table(main_table, main_deck, RIVER_PUT);
 	show_table_to_players(main_table);
 
