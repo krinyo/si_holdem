@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include <string.h>
 #include <locale.h>
 
 //DECK
@@ -84,6 +84,8 @@ enum combinations{
 struct card{
         char number[ONE_NUMBER_SIZE];
         char suit[UNICODE_EL_SIZE];
+	int alter_num;
+	int alter_suit;
         struct card *next_card_ptr;
 };
 void show_card(struct card current_card)
@@ -104,6 +106,8 @@ static struct card *fill_deck(struct card *first_card)
                 for(j = 0; j < NUMBERS_SIZE; j ++){
                         sprintf(first_card[counter].number,"%s", numbers[j]);
                         sprintf(first_card[counter].suit,"%s", suits[i]);
+			(first_card + counter)->alter_num = j;
+			(first_card + counter)->alter_suit = i;
                         (first_card + counter)->next_card_ptr =
                                 i != DECK_SIZE-1 ? first_card + counter + 1 : NULL;
                         counter ++;
@@ -125,17 +129,24 @@ struct deck *init_deck()
 }
 static void swap_card_positions(struct card *first_card, int first, int second)
 {
-        char temp_number[ONE_NUMBER_SIZE] = "";
-        char temp_suit[UNICODE_EL_SIZE] = "";
+        //char temp_number[ONE_NUMBER_SIZE] = "";
+        //char temp_suit[UNICODE_EL_SIZE] = "";
 
-        sprintf(temp_number, "%s", first_card[first].number);
-        sprintf(temp_suit, "%s", first_card[first].suit);
+        //sprintf(temp_number, "%s", first_card[first].number);
+        //sprintf(temp_suit, "%s", first_card[first].suit);
 
-        sprintf(first_card[first].number, "%s", first_card[second].number);
-        sprintf(first_card[first].suit, "%s", first_card[second].suit);
+        //sprintf(first_card[first].number, "%s", first_card[second].number);
+        //sprintf(first_card[first].suit, "%s", first_card[second].suit);
 
-        sprintf(first_card[second].number, "%s", temp_number);
-        sprintf(first_card[second].suit, "%s", temp_suit);
+        //sprintf(first_card[second].number, "%s", temp_number);
+        //sprintf(first_card[second].suit, "%s", temp_suit);
+
+	struct card temp_card;
+	memcpy(&temp_card, first_card + first, sizeof(struct card));
+
+	memcpy(first_card + first, first_card + second, sizeof(struct card));
+	
+	memcpy(first_card + second, &temp_card, sizeof(struct card));
 }
 void shuffle_deck(struct deck *deck_struct)
 {
@@ -203,7 +214,7 @@ struct player init_player(int table_pos, unsigned int mon,
 	current_player->player_state = no_betted;
 	current_player->player_cards_sum = 0;
 	current_player->player_screen = scr;
-	current_player->player_window = malloc(sizeof(WINDOW));
+	//current_player->player_window = malloc(sizeof(WINDOW));
 	current_player->player_window = win;
 	sprintf(current_player->nickname, "%s", nickname);
 	current_player->is_folded = 0;
@@ -359,14 +370,56 @@ void place_players_to_table(struct server *main_server,
 	}
 	main_server->desc_count = 0;
 }
+int compare(char a[], const char b[])
+{
+	int flag = 0,i = 0;  // integer variables declaration
+	while(a[i]!='\0' &&b[i]!='\0')  // while loop
+	{
+		if(a[i]!=b[i])
+		{
+			flag=1;
+           		break;
+       		}
+       		i++;
+    	}
+    	if(flag==0)
+    		return 1;
+    	else
+    		return 0;
+}
+void get_player_highest_card(struct player *current_player)
+{
+	struct card *player_cards = current_player->player_cards;
+	int i,j,
+	    highest_player_card = 0;
+	for(i = 0; i < NUMBERS_SIZE; i++){
+		for(j = 0; j < PLAYER_CARD_SUM; j ++){
+			if(compare(player_cards[j].number, numbers[i])
+					&& highest_player_card < i ){
+				highest_player_card = i;
+			}
+		}
+	}	
+	current_player->highest_card_num = highest_player_card;
+}
+void get_players_highest_card(struct table *main_table)
+{
+	int i;
+	for(i = 0; i < main_table->players_count; i ++){
+		get_player_highest_card(&(main_table->players[i]));
+	}
+}
 void give_cards_to_player(struct player *current_player, struct deck *deck_ptr)
 {
         int i;
         for(i = 0; i < PLAYER_CARD_SUM; i ++){
-                sprintf(current_player->player_cards[i].suit,"%s",
+                /*sprintf(current_player->player_cards[i].suit,"%s",
 				(deck_ptr->first_card + i)->suit);
                 sprintf(current_player->player_cards[i].number,"%s",
                                 (deck_ptr->first_card + i)->number);
+		*/
+		memcpy((current_player->player_cards + i),
+			       (deck_ptr->first_card + i), sizeof(struct card));
 		current_player->player_cards_sum ++;
         }
 	remove_cards_from_deck(deck_ptr, PLAYER_CARD_SUM);
@@ -378,6 +431,7 @@ void give_cards_to_all_players(struct table *main_table, struct deck *deck_ptr)
 	for(i = 0; i < main_table->players_count; i ++){
 		give_cards_to_player(&(main_table->players[i]), deck_ptr);
 	}
+
 }
 void put_cards_to_table(struct table *main_table, struct deck *deck_ptr, int count)
 {
@@ -385,10 +439,14 @@ void put_cards_to_table(struct table *main_table, struct deck *deck_ptr, int cou
 	int counter = 0;
 	for(i = 0; i < count; i ++){
 		index = main_table->table_cards_count;
+		/*
 		sprintf(main_table->table_cards[index].suit, "%s",
 				(deck_ptr->first_card + counter)->suit);
 		sprintf(main_table->table_cards[index].number, "%s",
 				(deck_ptr->first_card + counter)->number);
+		*/
+		memcpy((main_table->table_cards+index),
+				(deck_ptr->first_card+counter), sizeof(struct card));
 		counter ++;
 		main_table->table_cards_count ++;
 		//main_table->cards[i];
@@ -520,39 +578,7 @@ void bet(struct player *current_player, unsigned int count)
 
 	}
 }
-int compare(char a[], const char b[])
-{
-    int flag = 0,i = 0;  // integer variables declaration
-    while(a[i]!='\0' &&b[i]!='\0')  // while loop
-    {
-       if(a[i]!=b[i])
-       {
-           flag=1;
-           break;
-       }
-       i++;
-    }
-    if(flag==0)
-    	return 1;
-    else
-    	return 0;
-}
-void get_player_highest(struct player *current_player)
-{
-	struct card *player_cards = current_player->player_cards;
-	int i,j,
-	    highest_player_card = 0;
-	for(i = 0; i < NUMBERS_SIZE; i++){
-		for(j = 0; j < PLAYER_CARD_SUM; j ++){
-			if(compare(player_cards[j].number, numbers[i])
-					&& highest_player_card < i ){
-				highest_player_card = i;
-				//break;
-			}
-		}
-	}	
-	current_player->highest_card_num = highest_player_card;
-}
+
 void handle_command(struct player *current_player, struct table *main_table)
 {
 	char ch;
@@ -598,7 +624,7 @@ void handle_all_players(struct table *main_table)
 {
 	int i;
 	for(i = 0 ; i < main_table->players_count; i ++){
-		get_player_highest(&(main_table->players[i]));
+		//get_player_highest_card(&(main_table->players[i]));
 		handle_command(&(main_table->players[i]), main_table);
 		show_table_to_players(main_table);
 	}
@@ -648,6 +674,37 @@ void players_money_to_table(struct table *main_table)
 	}
 }
 
+
+int test_pair(struct player *plr, struct table *tble)
+{
+	int i, j;
+	for(i = 0; i < PLAYER_CARD_SUM; i ++){
+		for(j = 0; j < MAX_TABLE_CARDS; j ++){
+			if(plr->player_cards[i].alter_num ==
+					tble->table_cards[j].alter_num){
+				printf("PLAYER HAS A PAIR");
+				return 1;
+	
+			}
+		}
+	}
+	return 0;
+}
+/*int test_two_pair()
+{
+
+}
+int get_combo(struct card *all_player_cards)
+{
+
+}*/
+void calculate_winner(struct table *main_table)
+{
+	int i;
+	for(i = 0; i < main_table->players_count; i ++){
+		test_pair(&(main_table->players[i]), main_table);
+	}
+}
 //--------------------------------------------//
 int main()
 {
@@ -660,9 +717,15 @@ int main()
 	place_players_to_table(main_server, main_table);
 	shuffle_deck(main_deck);
 	give_cards_to_all_players(main_table, main_deck);
+	get_players_highest_card(main_table);
 	make_blinds(main_table);
 	show_table_info(main_table);
 	show_table_to_players(main_table);
+
+	put_cards_to_table(main_table, main_deck, 5);
+	show_table_to_players(main_table);
+	calculate_winner(main_table);
+	/*
 	do{
 		handle_all_players(main_table);
 		//handle_command(&main_table->players[0], main_table);
@@ -704,5 +767,6 @@ int main()
 	}
 	while(!equal_players_betting(main_table));
 	show_table_info(main_table);
+	*/
 	sleep(100);
 }
