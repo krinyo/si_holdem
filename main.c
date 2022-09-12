@@ -86,7 +86,6 @@ struct card{
         char suit[UNICODE_EL_SIZE];
 	int alter_num;
 	int alter_suit;
-        struct card *next_card_ptr;
 };
 void show_card(struct card current_card)
 {
@@ -96,23 +95,24 @@ void show_card(struct card current_card)
 struct deck{
         int size;
         struct card *first_card;
+	int first_el_index;
 	struct card *start_mem_point;
 };
-static struct card *fill_deck(struct card *first_card)
+static struct card *fill_deck(struct deck *main_deck)
 {
 	int i, j;
         int counter = 0;
+	struct card *first_card = main_deck->first_card;
         for(i = 0; i < SUITS_SIZE; i ++){
                 for(j = 0; j < NUMBERS_SIZE; j ++){
                         sprintf(first_card[counter].number,"%s", numbers[j]);
                         sprintf(first_card[counter].suit,"%s", suits[i]);
 			(first_card + counter)->alter_num = j;
 			(first_card + counter)->alter_suit = i;
-                        (first_card + counter)->next_card_ptr =
-                                i != DECK_SIZE-1 ? first_card + counter + 1 : NULL;
                         counter ++;
                 }
         }
+	main_deck->first_el_index = 0;
 	return first_card;
 }
 struct deck *init_deck()
@@ -123,29 +123,15 @@ struct deck *init_deck()
 	deck_struct->first_card = malloc(sizeof(struct card) * DECK_SIZE);
 	deck_struct->start_mem_point = deck_struct->first_card;
 	
-	fill_deck(deck_struct->first_card);
+	fill_deck(deck_struct);
         
 	return deck_struct;
 }
 static void swap_card_positions(struct card *first_card, int first, int second)
 {
-        //char temp_number[ONE_NUMBER_SIZE] = "";
-        //char temp_suit[UNICODE_EL_SIZE] = "";
-
-        //sprintf(temp_number, "%s", first_card[first].number);
-        //sprintf(temp_suit, "%s", first_card[first].suit);
-
-        //sprintf(first_card[first].number, "%s", first_card[second].number);
-        //sprintf(first_card[first].suit, "%s", first_card[second].suit);
-
-        //sprintf(first_card[second].number, "%s", temp_number);
-        //sprintf(first_card[second].suit, "%s", temp_suit);
-
 	struct card temp_card;
 	memcpy(&temp_card, first_card + first, sizeof(struct card));
-
 	memcpy(first_card + first, first_card + second, sizeof(struct card));
-	
 	memcpy(first_card + second, &temp_card, sizeof(struct card));
 }
 void shuffle_deck(struct deck *deck_struct)
@@ -160,7 +146,7 @@ void shuffle_deck(struct deck *deck_struct)
 void show_deck(struct deck *deck_struct)//for debug
 {
         int i;
-        for(i = 0; i < deck_struct->size; i++){
+        for(i = deck_struct->first_el_index; i < deck_struct->size; i++){
                 printf("|%s %s| %i \n",
 				(deck_struct->first_card+i)->number,
 				(deck_struct->first_card+i)->suit, i);
@@ -169,14 +155,12 @@ void show_deck(struct deck *deck_struct)//for debug
 void remove_cards_from_deck(struct deck *deck_struct, int count)
 {
 	int i;
-	for(i = 0; i < count; i ++){
-		deck_struct->first_card =
-			deck_struct->first_card->next_card_ptr;
-	}
+	deck_struct->first_el_index += count;
 	deck_struct->size -= count;
 }
 void reset_deck(struct deck *deck_struct)
 {
+	deck_struct->first_el_index = 0;
 	deck_struct->first_card = deck_struct->start_mem_point;
 	deck_struct->size = DECK_SIZE;
 }
@@ -249,6 +233,7 @@ struct table{
 	struct card table_cards[MAX_TABLE_CARDS];
 	struct player players[MAX_PLAYERS];
 	char players_message[MESSAGE_SIZE];
+	int winner_pos;
 };
 
 struct table *init_table()
@@ -259,6 +244,7 @@ struct table *init_table()
 	main_table->table_cards_count = 0;
 	main_table->session_money = START_SES_MONEY;
 	sprintf(main_table->players_message, "%s", "");
+	main_table->winner_pos = 0;
         return main_table;
 }
 void show_table_info(struct table *main_table)
@@ -413,13 +399,9 @@ void give_cards_to_player(struct player *current_player, struct deck *deck_ptr)
 {
         int i;
         for(i = 0; i < PLAYER_CARD_SUM; i ++){
-                /*sprintf(current_player->player_cards[i].suit,"%s",
-				(deck_ptr->first_card + i)->suit);
-                sprintf(current_player->player_cards[i].number,"%s",
-                                (deck_ptr->first_card + i)->number);
-		*/
 		memcpy((current_player->player_cards + i),
-			       (deck_ptr->first_card + i), sizeof(struct card));
+			       (deck_ptr->first_card +deck_ptr->first_el_index + i),
+			       sizeof(struct card));
 		current_player->player_cards_sum ++;
         }
 	remove_cards_from_deck(deck_ptr, PLAYER_CARD_SUM);
@@ -439,17 +421,11 @@ void put_cards_to_table(struct table *main_table, struct deck *deck_ptr, int cou
 	int counter = 0;
 	for(i = 0; i < count; i ++){
 		index = main_table->table_cards_count;
-		/*
-		sprintf(main_table->table_cards[index].suit, "%s",
-				(deck_ptr->first_card + counter)->suit);
-		sprintf(main_table->table_cards[index].number, "%s",
-				(deck_ptr->first_card + counter)->number);
-		*/
 		memcpy((main_table->table_cards+index),
-				(deck_ptr->first_card+counter), sizeof(struct card));
+				(deck_ptr->first_card+deck_ptr->first_el_index+counter),
+				sizeof(struct card));
 		counter ++;
 		main_table->table_cards_count ++;
-		//main_table->cards[i];
 	}
 	remove_cards_from_deck(deck_ptr, count);
 }
@@ -673,37 +649,52 @@ void players_money_to_table(struct table *main_table)
 		main_table->players[i].turn_money = 0;
 	}
 }
-
-
-int test_pair(struct player *plr, struct table *tble)
+int *insertion_sort(int array[], int size)
 {
-	int i, j;
-	for(i = 0; i < PLAYER_CARD_SUM; i ++){
-		for(j = 0; j < MAX_TABLE_CARDS; j ++){
-			if(plr->player_cards[i].alter_num ==
-					tble->table_cards[j].alter_num){
-				printf("PLAYER HAS A PAIR");
-				return 1;
-	
-			}
-		}
-	}
-	return 0;
+        int j, key, i;
+        for(j = 1; j < size; j ++){
+                key = array[j];
+                i = j - 1;
+                while(i >= 0 && array[i] > key){
+                        array[i+1] = array[i];
+                        i = i - 1;
+                }
+                array[i+1] = key;
+        }
+        return array;
 }
-/*int test_two_pair()
-{
-
-}
-int get_combo(struct card *all_player_cards)
-{
-
-}*/
-void calculate_winner(struct table *main_table)
+enum combinations test_pair(struct card all_player_cards[],
+		struct player *current_player)
 {
 	int i;
-	for(i = 0; i < main_table->players_count; i ++){
-		test_pair(&(main_table->players[i]), main_table);
+	int cards_nums[ALL_PLAYER_CDS];
+	for(i = 0; i < ALL_PLAYER_CDS; i ++){
+		cards_nums[i] = all_player_cards[i].alter_num;
 	}
+	insertion_sort(cards_nums, ALL_PLAYER_CDS); 
+	int pre_el = -1;
+	for(i = 0; i < ALL_PLAYER_CDS; i ++){
+		if(cards_nums[i] == pre_el){
+			return pair;
+		}
+		pre_el = cards_nums[i];
+	}
+	return -1;	
+}
+void get_combos_num(struct table *main_table)
+{
+	int i;
+	int results[MAX_PLAYERS];
+	struct card all_player_cards[ALL_PLAYER_CDS];
+	for(i = 0; i < main_table->players_count; i ++){
+		memcpy(all_player_cards, &(main_table->players[i].player_cards),
+				sizeof(struct card)*2);
+		memcpy(all_player_cards+2, &(main_table->table_cards),
+				sizeof(struct card)*5);
+		results[i] = test_pair(all_player_cards, &main_table->players[i]);
+		printf("PARA ETO - 1 :%i\n", results[i]);
+	}
+
 }
 //--------------------------------------------//
 int main()
@@ -713,7 +704,21 @@ int main()
 	struct server *main_server = init_server();
 	struct table *main_table = init_table();
 	struct deck *main_deck = init_deck();
-
+	
+	/*
+	show_deck(main_deck);
+	printf("init--------\n");
+	shuffle_deck(main_deck);
+	show_deck(main_deck);
+	printf("shuffled----\n");
+	remove_cards_from_deck(main_deck, 2);
+	show_deck(main_deck);
+	printf("remove 2\n");
+	reset_deck(main_deck);
+	show_deck(main_deck);
+	printf("--reset--\n");
+	*/
+	
 	place_players_to_table(main_server, main_table);
 	shuffle_deck(main_deck);
 	give_cards_to_all_players(main_table, main_deck);
@@ -724,7 +729,8 @@ int main()
 
 	put_cards_to_table(main_table, main_deck, 5);
 	show_table_to_players(main_table);
-	calculate_winner(main_table);
+	get_combos_num(main_table);
+	
 	/*
 	do{
 		handle_all_players(main_table);
