@@ -679,7 +679,7 @@ enum combinations test_pair(struct card all_player_cards[],
 		}
 		pre_el = cards_nums[i];
 	}
-	return -1;	
+	return 0;
 }
 void get_combos_num(struct table *main_table)
 {
@@ -691,8 +691,9 @@ void get_combos_num(struct table *main_table)
 				sizeof(struct card)*2);
 		memcpy(all_player_cards+2, &(main_table->table_cards),
 				sizeof(struct card)*5);
-		results[i] = test_pair(all_player_cards, &main_table->players[i]);
-		printf("PARA ETO - 1 :%i\n", results[i]);
+		if( test_pair(all_player_cards, &main_table->players[i]) ){
+			printf("Para player:%i\n", i);
+		}
 	}
 
 }
