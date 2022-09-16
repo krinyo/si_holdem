@@ -469,7 +469,7 @@ void show_table_to_players(struct table *main_table)
 		mvwprintw(pl_win, 0, 15, "[B]et'number'");
 		
 		//TABLE
-		mvwprintw(pl_win, 5, 5, main_table->table_cards[0].number);
+		mvwprintw(pl_win, 5, 5,  main_table->table_cards[0].number);
 		mvwprintw(pl_win, 5, 7, main_table->table_cards[0].suit);
 		mvwprintw(pl_win, 5, 9, main_table->table_cards[1].number);
 		mvwprintw(pl_win, 5, 11, main_table->table_cards[1].suit);
@@ -649,9 +649,11 @@ void players_money_to_table(struct table *main_table)
 		main_table->players[i].turn_money = 0;
 	}
 }
-int *insertion_sort(int array[], int size)
+int *insertion_sort(int arr[], int size)
 {
-        int j, key, i;
+        int j, key, i; 
+	int *array = malloc(sizeof(int)*size);
+	memcpy(array, arr, sizeof(int)*size);
         for(j = 1; j < size; j ++){
                 key = array[j];
                 i = j - 1;
@@ -663,7 +665,37 @@ int *insertion_sort(int array[], int size)
         }
         return array;
 }
-enum combinations test_pair(struct card all_player_cards[],
+struct card *sort_cards_by_nums(struct card all_player_cards[])
+{
+	int i, j, key;
+	for(j = 0; j < ALL_PLAYER_CDS; j ++){
+		key = all_player_cards[j].alter_num;
+		i = j - 1;
+		while(i >= 0 && all_player_cards[i].alter_num > key){
+			all_player_cards[i+1].alter_num =
+				all_player_cards[i].alter_num;
+			i = i - 1;
+		}
+		all_player_cards[i+1].alter_num = key;
+	}
+	return all_player_cards;
+}
+struct card *sort_cards_by_suits(struct card all_player_cards[])
+{
+	int i, j, key;
+	for(j = 0; j < ALL_PLAYER_CDS; j ++){
+		key = all_player_cards[j].alter_suit;
+		i = j - 1;
+		while(i >= 0 && all_player_cards[i].alter_suit > key){
+			all_player_cards[i+1].alter_suit =
+				all_player_cards[i].alter_suit;
+			i = i - 1;
+		}
+		all_player_cards[i+1].alter_suit = key;
+	}
+	return all_player_cards;
+}
+/*enum combinations test_pair(struct card all_player_cards[],
 		struct player *current_player)
 {
 	int i;
@@ -680,6 +712,39 @@ enum combinations test_pair(struct card all_player_cards[],
 		pre_el = cards_nums[i];
 	}
 	return 0;
+}*/
+enum combinations get_combo(struct player *current_player,
+		struct card all_player_cards[])
+{
+	int cards_nums[ALL_PLAYER_CDS],
+		cards_suits[ALL_PLAYER_CDS],
+		i;
+	for(i = 0; i < ALL_PLAYER_CDS; i ++){
+		cards_nums[i] = all_player_cards[i].alter_num;
+	}
+	for(i = 0; i < ALL_PLAYER_CDS; i ++){
+		cards_suits[i] = all_player_cards[i].alter_suit;
+	}
+	int pre_num;
+	int pre_suit;
+	/*checking royal flush*/
+	sort_cards_by_nums(all_player_cards);
+	pre_num = 12;
+	pre_suit = all_player_cards[ALL_PLAYER_CDS-1].alter_suit;
+	for(i = ALL_PLAYER_CDS-1; i >= ALL_PLAYER_CDS - 5; i --){
+		if(all_player_cards[i].alter_num == pre_num &&
+				all_player_cards[i].alter_suit == pre_suit){
+			pre_num = all_player_cards[i].alter_num;
+			if(i == ALL_PLAYER_CDS){
+				return royal_flush;
+			}
+		}
+		else{
+			break;
+		}
+	}
+	/**/
+	return high_card;
 }
 void get_combos_num(struct table *main_table)
 {
@@ -691,12 +756,16 @@ void get_combos_num(struct table *main_table)
 				sizeof(struct card)*2);
 		memcpy(all_player_cards+2, &(main_table->table_cards),
 				sizeof(struct card)*5);
-		if( test_pair(all_player_cards, &main_table->players[i]) ){
+		/*if( test_pair(all_player_cards, &main_table->players[i]) ){
 			printf("Para player:%i\n", i);
-		}
+		}*/
+		get_combo(&(main_table->players[i]), all_player_cards);
+
 	}
 
 }
+
+
 //--------------------------------------------//
 int main()
 {
