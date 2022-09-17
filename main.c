@@ -665,33 +665,37 @@ int *insertion_sort(int arr[], int size)
         }
         return array;
 }
-struct card *sort_cards_by_nums(struct card all_player_cards[])
+struct card *sort_cards_by_nums(struct card *all_player_cards)
 {
 	int i, j, key;
+	struct card temp_card;
 	for(j = 0; j < ALL_PLAYER_CDS; j ++){
 		key = all_player_cards[j].alter_num;
+		temp_card = all_player_cards[j];
 		i = j - 1;
 		while(i >= 0 && all_player_cards[i].alter_num > key){
-			all_player_cards[i+1].alter_num =
-				all_player_cards[i].alter_num;
+			all_player_cards[i+1] =
+				all_player_cards[i];
 			i = i - 1;
 		}
-		all_player_cards[i+1].alter_num = key;
+		all_player_cards[i+1] = temp_card;
 	}
 	return all_player_cards;
 }
-struct card *sort_cards_by_suits(struct card all_player_cards[])
+struct card *sort_cards_by_suits(struct card *all_player_cards)
 {
 	int i, j, key;
+	struct card temp_card;
 	for(j = 0; j < ALL_PLAYER_CDS; j ++){
 		key = all_player_cards[j].alter_suit;
+		temp_card = all_player_cards[j];
 		i = j - 1;
 		while(i >= 0 && all_player_cards[i].alter_suit > key){
-			all_player_cards[i+1].alter_suit =
-				all_player_cards[i].alter_suit;
+			all_player_cards[i+1] =
+				all_player_cards[i];
 			i = i - 1;
 		}
-		all_player_cards[i+1].alter_suit = key;
+		all_player_cards[i+1] = temp_card;
 	}
 	return all_player_cards;
 }
@@ -725,10 +729,12 @@ enum combinations get_combo(struct player *current_player,
 	for(i = 0; i < ALL_PLAYER_CDS; i ++){
 		cards_suits[i] = all_player_cards[i].alter_suit;
 	}
-	int pre_num;
-	int pre_suit;
+	int pre_num,
+	    pre_suit,
+	    same_suits_count,
+	    same_nums_count;
 	/*checking royal flush*/
-	sort_cards_by_nums(all_player_cards);
+	all_player_cards = sort_cards_by_nums(all_player_cards);
 	pre_num = 12;
 	pre_suit = all_player_cards[ALL_PLAYER_CDS-1].alter_suit;
 	for(i = ALL_PLAYER_CDS-1; i >= ALL_PLAYER_CDS - 5; i --){
@@ -741,6 +747,58 @@ enum combinations get_combo(struct player *current_player,
 		}
 		else{
 			break;
+		}
+	}
+	/*cheking straight flush*/
+	all_player_cards = sort_cards_by_suits(all_player_cards);
+	pre_num = -1;
+	pre_suit = all_player_cards[0].alter_suit;
+	same_suits_count = 0;
+	same_nums_count = 0;
+	for(i = 0; i < ALL_PLAYER_CDS; i ++){
+		if(all_player_cards[i].alter_suit == pre_suit){
+			same_suits_count ++;	
+		}
+		else{
+			same_suits_count = 0;
+		}
+		pre_suit = all_player_cards[i].alter_suit;
+		if(same_suits_count == 5) break;
+	}
+	if(same_suits_count == 5){
+		all_player_cards =
+			sort_cards_by_nums(all_player_cards);
+		pre_num = all_player_cards[0].alter_num;
+		pre_suit = all_player_cards[0].alter_suit;
+		for(i = 0; i < ALL_PLAYER_CDS; i ++){
+			if(all_player_cards[i].alter_num == pre_num &&
+					all_player_cards[i].alter_suit == pre_suit){
+				same_nums_count ++;
+			}
+			else{
+				same_nums_count = 0;
+			}
+			pre_num = all_player_cards[i].alter_num;
+			pre_suit = all_player_cards[i].alter_suit;
+			if(same_nums_count == 5){
+				return straight_flush;
+			}
+
+		}
+	}
+	/*checking four of a kind*/
+	all_player_cards = sort_cards_by_nums(all_player_cards);
+	same_nums_count = 0;
+	pre_num = all_player_cards[0].alter_num;
+	for(i = 0; i < ALL_PLAYER_CDS; i ++){
+		if(all_player_cards[i].alter_num == pre_num){
+			same_nums_count ++;
+		}
+		else{
+			same_nums_count = 0;
+		}
+		if(same_nums_count == 4){
+			return four_of_a_kind;
 		}
 	}
 	/**/
@@ -759,7 +817,8 @@ void get_combos_num(struct table *main_table)
 		/*if( test_pair(all_player_cards, &main_table->players[i]) ){
 			printf("Para player:%i\n", i);
 		}*/
-		get_combo(&(main_table->players[i]), all_player_cards);
+		main_table->players[i].combo_num =
+			get_combo(&(main_table->players[i]), all_player_cards);
 
 	}
 
