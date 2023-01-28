@@ -1,11 +1,12 @@
+//gcc -Wall -g -o second second.c -DDEBUG -libncurses(w)
+//W - is really important
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-
 #define SUITS_COUNT     4
-#define SUIT_SIZE       4
+#define SUIT_SIZE       8
 #define NUMBERS_COUNT   13
 #define NUMBER_SIZE     3
 
@@ -37,6 +38,12 @@
 #define DEBUG_PRINT     0
 #endif
 const char nicknames[MAX_CONNECTIONS][NICKNAME_SIZE] = {"Bob", "Jack", "Pete", "Rick", "Joe"};
+//char suits[SUITS_COUNT][SUIT_SIZE] = {
+//    {0xE2, 0x99, 0xA0, 0x00}, // ♠
+//    {0xE2, 0x99, 0xA3, 0x00}, // ♣
+//    {0xE2, 0x99, 0xA6, 0x00}, // ♦
+//    {0xE2, 0x99, 0xA5, 0x00}  // ♥
+//};
 const char suits[SUITS_COUNT][SUIT_SIZE] = 
     { "\u2660", "\u2665", "\u2666", "\u2663" };
 
@@ -346,8 +353,17 @@ int main()
     //show_all_deck_cards(*main_deck);
     struct server *main_server = init_server();
 
+    //initscr(); // инициализация ncurses
+    //printw("\u2603"); // вывод символа "☃"
+    //mvprintw(LINES/2, COLS/2, suits[0]); // перемещение курсора в центр экрана и вывод символа "☃"
+    //refresh(); // обновление экрана
+    //getch(); // ожидание нажатия клавиши
+    //endwin(); // завершение работы ncurses
+    //return 0;
+    printf("%s\n", suits[0]);
     get_clients(main_server);
     setup_playerss_screen(main_server);
+    //sleep(10);
     //while(1){
     //    show_server_info(*main_server);
     //    sleep(5);
