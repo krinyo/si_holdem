@@ -28,6 +28,7 @@
 #define MAX_ATTEMPTS    5
 #define START_MONEY     5000
 #define BUFSIZE         256
+#define BUFF_SIZE       7
 #define CLIENT_CARDS    2
 #define START_SES_MON   0
 
@@ -383,7 +384,7 @@ int client_bet(struct client *curr_client, int sum)
         return -1;
     }
 }
-void handle_client_command(struct client *curr_client)
+void handle_client_commandd(struct client *curr_client)
 {
     int command, bet_money;
     char buff[7];
@@ -415,6 +416,118 @@ void handle_client_command(struct client *curr_client)
         else{
 
         }
+    }
+}
+void handle_client_commanddd(struct client *curr_client)
+{
+    int command, bet_money;
+    char buff[BUFF_SIZE];
+
+    while (1) {
+        int bytes_received = 0;
+        int ret;
+        set_term(curr_client->scr);
+	    wmove(curr_client->win, 10, 2);
+
+        printf("Awaiting client command...\n");
+
+        while (bytes_received < BUFF_SIZE) {
+            ret = recv(curr_client->descriptor, &buff[bytes_received], BUFF_SIZE - bytes_received, 0);
+            if (ret == -1) {
+                perror("recv");
+                return;
+            }
+            if (ret == 0) {
+                printf("Client disconnected\n");
+                return;
+            }
+            bytes_received += ret;
+        }
+        buff[BUFF_SIZE - 1] = '\0';
+
+        if (buff[0] != 'b' && buff[0] != 'c' && buff[0] != 'f') {
+            printf("Invalid command format.\n");
+            continue;
+        }
+
+        switch (buff[0]) {
+            case 'b':
+                bet_money = atoi(&buff[1]);
+                if (bet_money == 0 || bet_money > curr_client->money) {
+                    printf("Invalid bet amount.\n");
+                    wmove(curr_client->win, 10, 2);
+                    continue;
+                }
+                client_bet(curr_client, bet_money);
+                printf("Client bet %d\n", bet_money);
+                break;
+            case 'c':
+                printf("Client checked\n");
+                wmove(curr_client->win, 10, 2);
+                break;
+            case 'f':
+                printf("Client folded\n");
+                wmove(curr_client->win, 10, 2);
+                curr_client->is_folded = 1;
+                break;
+        }
+        
+        break;
+    }
+}
+void handle_client_command(struct client *curr_client)
+{
+    int command, bet_money;
+    char buff[BUFF_SIZE];
+
+    while (1) {
+        int bytes_received = 0;
+        int ret;
+
+        printf("Awaiting client command...\n");
+
+        while (bytes_received < BUFF_SIZE) {
+            ret = recv(curr_client->descriptor, &buff[bytes_received], 1, 0);
+            if (ret == -1) {
+                perror("recv");
+                return;
+            }
+            if (ret == 0) {
+                printf("Client disconnected\n");
+                return;
+            }
+            bytes_received += ret;
+            if (buff[bytes_received - 1] == '\n') {
+                break;
+            }
+        }
+        buff[bytes_received - 1] = '\0';
+
+        if (buff[0] != 'b' && buff[0] != 'c' && buff[0] != 'f') {
+            printf("Invalid command format.\n");
+            continue;
+        }
+
+        switch (buff[0]) {
+            case 'b':
+                bet_money = atoi(&buff[1]);
+                if (bet_money == 0 || bet_money > curr_client->money) {
+                    printf("Invalid bet amount.\n");
+                    continue;
+                }
+                client_bet(curr_client, bet_money);
+                printf("Client bet %d\n", bet_money);
+                break;
+            case 'c':
+                printf("Client checked\n");
+                break;
+            case 'f':
+                printf("Client folded\n");
+                curr_client->is_folded = 1;
+                break;
+        }
+
+        break;
     }
 }
 void client_fold(struct client *curr_client, struct table *main_table)
