@@ -19,7 +19,7 @@
 #include <arpa/inet.h>
 #include <locale.h>
 #define SERVER_PORT     15000
-#define MAX_CONNECTIONS 5
+#define MAX_CONNECTIONS 3
 #define MIN_CONNECTIONS 2
 #define RECONNECT_COUNT 5
 #define WAIT_TIME       5
@@ -34,7 +34,8 @@
 
 #define MAX_MSG_SIZE    15
 #define MAX_TABLE_CARDS 5
-
+#define BIG_BLIND       100
+#define START_BLIND_POS -1
 #include <ncurses.h>
 
 /*DEBUG*/
@@ -43,7 +44,7 @@
 #else
 #define DEBUG_PRINT     0
 #endif
-const char nicknames[MAX_CONNECTIONS][NICKNAME_SIZE] = {"Bob", "Jack", "Pete", "Rick", "Joe"};
+const char nicknames[MAX_CONNECTIONS][NICKNAME_SIZE] = {"Bob", "Jack" };//"Pete", "Rick", "Joe"};
 //char suits[SUITS_COUNT][SUIT_SIZE] = {
 //    {0xE2, 0x99, 0xA0, 0x00}, // ♠
 //    {0xE2, 0x99, 0xA3, 0x00}, // ♣
@@ -320,6 +321,9 @@ struct table{
     int table_cards_count;
     int winner_pos;
     int max_bet;
+    int big_blind_sum;
+    int big_blind_pos;
+    int small_blind_pos;
 
     char table_message[MAX_MSG_SIZE];
 };
@@ -330,6 +334,8 @@ struct table *init_table()
     main_table->table_cards_count = 0;
     main_table->winner_pos = -1;
     main_table->max_bet = 0;
+    main_table->big_blind_sum = BIG_BLIND;
+    main_table->big_blind_pos = START_BLIND_POS;
     strcpy(main_table->table_message, "TEST MESSAGE");
     return main_table;
 };
@@ -471,7 +477,7 @@ void handle_client_commanddd(struct client *curr_client)
                 curr_client->is_folded = 1;
                 break;
         }
-        
+        wrefresh(curr_client->win);
         break;
     }
 }
@@ -530,6 +536,32 @@ void handle_client_command(struct client *curr_client)
         break;
     }
 }
+int clients_bets_equal(struct server *main_server)
+{
+    int i,
+        prev_client_money = main_server->clients[0].session_money;
+    for(i = 1; i < main_server->desc_count; i ++){
+        if(main_server->clients[i].session_money != prev_client_money){
+            return 0;
+        }
+        prev_client_money = main_server->clients[i].session_money;
+    }
+    return 1;
+}
+void handle_all_clients(struct server *main_server)
+{
+    int i = 0;
+    /*for(i = 0; i < main_server->desc_count; i ++){
+        handle_client_command(&main_server->clients[i]);
+    }*/
+    while(!clients_bets_equal(main_server)){
+        if(i == main_server->desc_count){
+            i = 0;
+        }
+        handle_client_command(&main_server->clients[i]);
+        i++;
+    }
+}
 void client_fold(struct client *curr_client, struct table *main_table)
 {
     curr_client->is_folded = 1;
@@ -538,6 +570,32 @@ int client_check(struct client *curr_client)
 {
     //turn goes to next player
     return 0;
+}
+void calculate_blinds_pos(struct server *main_server, struct table *main_table)
+{
+    int desc_count = main_server->desc_count;
+    int big_blind_pos = main_table->big_blind_pos + 1;
+    int small_blind_pos = big_blind_pos + 1;
+
+    big_blind_pos = big_blind_pos <= desc_count ? big_blind_pos : (START_BLIND_POS + 1);
+    small_blind_pos = small_blind_pos <= desc_count ? small_blind_pos : (START_BLIND_POS + 1);
+
+    main_table->big_blind_pos = big_blind_pos;
+    main_table->small_blind_pos = small_blind_pos;
+}
+void get_big_blind(struct server *main_server, struct table *main_table)
+{
+    client_bet(&(main_server->clients[main_table->big_blind_pos]), BIG_BLIND);
+}
+void get_small_blind(struct server *main_server, struct table *main_table)
+{
+    client_bet(&(main_server->clients[main_table->small_blind_pos]), (BIG_BLIND/2));
+}
+void get_blinds(struct server *main_server, struct table *main_table)
+{
+    calculate_blinds_pos(main_server, main_table);
+    get_big_blind(main_server, main_table);
+    get_small_blind(main_server, main_table);
 }
 int main()
 {
@@ -548,7 +606,8 @@ int main()
     struct table *main_table = init_table();
     fill_deck(main_deck);
     
-    get_client(main_server);
+    //get_client(main_server);
+    get_clients(main_server);
     //reset_deck(main_deck);
     shuffle_deck(main_deck);
     give_cards_to_all_clients(main_server, main_deck);
@@ -556,7 +615,9 @@ int main()
     show_table_info(*main_table);
 
     setup_players_screen(main_server);
-    handle_client_command(&main_server->clients[0]);
+    get_blinds(main_server, main_table);
+    //handle_client_command(&main_server->clients[0]);
+    handle_all_clients(main_server);
     //show_all_deck_cards(*main_deck);
     show_clients_info(*main_server);
     sleep(5);
