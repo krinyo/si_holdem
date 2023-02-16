@@ -305,13 +305,15 @@ void setup_players_screen(struct server *main_server)
     
     for(i = 0; i < main_server->desc_count; i ++){
         curr_desc = main_server->clients[i].descriptor;
-        //setlocale(LC_ALL, "");
-        setlocale(LC_ALL, "en_US.UTF-8");
+        //setlocale does something, don't actually understand
+        setlocale(LC_ALL, "");
+        //setlocale(LC_ALL, "en_US.UTF-8");
         main_server->clients[i].fd = fdopen(curr_desc, "rw");
         main_server->clients[i].scr = newterm(getenv("TERM"), main_server->clients[i].fd, main_server->clients[i].fd);
         set_term(main_server->clients[i].scr);
         main_server->clients[i].win = newwin(13, 42, 1, 2);
         mvwprintw(main_server->clients[i].win, 13/2, 42/2, suits[0]);
+        //mvwprintw(main_server->clients[i].win, 13/2, 42/2, "%s", "♥");
         wrefresh(main_server->clients[i].win);
     }
 }
@@ -330,6 +332,11 @@ struct table{
 struct table *init_table()
 {
     struct table *main_table = malloc(sizeof(struct table));
+    int i;
+    for(i = 0; i < MAX_TABLE_CARDS; i ++){
+        strcpy(main_table->table_cards[i].number, "");
+        strcpy(main_table->table_cards[i].suit, "");
+    }
     main_table->table_money = 0;
     main_table->table_cards_count = 0;
     main_table->winner_pos = -1;
@@ -486,7 +493,7 @@ void handle_client_command(struct client *curr_client)
     int command, bet_money;
     char buff[BUFF_SIZE];
 
-    while (1) {
+    while (curr_client->is_folded != 1) {
         int bytes_received = 0;
         int ret;
 
@@ -597,6 +604,39 @@ void get_blinds(struct server *main_server, struct table *main_table)
     get_big_blind(main_server, main_table);
     get_small_blind(main_server, main_table);
 }
+
+void show_table_to_client(struct client *curr_client, struct table *main_table)
+{
+    set_term(curr_client->scr);
+    curr_client->win = newwin(13, 42, 1, 2);
+    //MENU
+    mvwprintw(curr_client->win, 0, 0, "[F]old");
+    mvwprintw(curr_client->win, 0, 7, "[C]heck");
+    mvwprintw(curr_client->win, 0, 15, "[B]et'number'");
+    //TABLE
+    mvwprintw(curr_client->win, 5, 5, "%s", main_table->table_cards[0].number);
+    mvwprintw(curr_client->win, 5, 7, "%s", main_table->table_cards[0].suit);
+    mvwprintw(curr_client->win, 5, 9, "%s", main_table->table_cards[1].number);
+    mvwprintw(curr_client->win, 5, 11, "%s", main_table->table_cards[1].suit);
+    mvwprintw(curr_client->win, 5, 13, "%s", main_table->table_cards[2].number);
+    mvwprintw(curr_client->win, 5, 15, "%s", main_table->table_cards[2].suit);
+    mvwprintw(curr_client->win, 5, 17, "%s", main_table->table_cards[3].number);
+    mvwprintw(curr_client->win, 5, 19, "%s", main_table->table_cards[3].suit);
+    mvwprintw(curr_client->win, 5, 21, "%s", main_table->table_cards[4].number);
+    mvwprintw(curr_client->win, 5, 23, "%s", main_table->table_cards[4].suit);
+    mvwprintw(curr_client->win, 5, 25, "%s", main_table->table_cards[5].number);
+    mvwprintw(curr_client->win, 5, 27, "%s", main_table->table_cards[5].suit);
+
+    //PLAYER
+    wrefresh(curr_client->win);
+}
+void show_table_to_clients(struct server *main_server, struct table *main_table)
+{
+    int i;
+    for(i = 0; i < main_server->desc_count; i ++){
+        show_table_to_client(&(main_server->clients[i]), main_table);
+    }
+}
 int main()
 {
     srand(time(NULL));
@@ -616,6 +656,7 @@ int main()
 
     setup_players_screen(main_server);
     get_blinds(main_server, main_table);
+    show_table_to_clients(main_server, main_table);
     //handle_client_command(&main_server->clients[0]);
     handle_all_clients(main_server);
     //show_all_deck_cards(*main_deck);
