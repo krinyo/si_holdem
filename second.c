@@ -608,7 +608,7 @@ void get_blinds(struct server *main_server, struct table *main_table)
 void show_table_to_client(struct client *curr_client, struct table *main_table)
 {
     set_term(curr_client->scr);
-    curr_client->win = newwin(13, 42, 1, 2);
+    //curr_client->win = newwin(13, 42, 1, 2);
     //MENU
     mvwprintw(curr_client->win, 0, 0, "[F]old");
     mvwprintw(curr_client->win, 0, 7, "[C]heck");
@@ -624,10 +624,10 @@ void show_table_to_client(struct client *curr_client, struct table *main_table)
     mvwprintw(curr_client->win, 5, 19, "%s", main_table->table_cards[3].suit);
     mvwprintw(curr_client->win, 5, 21, "%s", main_table->table_cards[4].number);
     mvwprintw(curr_client->win, 5, 23, "%s", main_table->table_cards[4].suit);
-    mvwprintw(curr_client->win, 5, 25, "%s", main_table->table_cards[5].number);
-    mvwprintw(curr_client->win, 5, 27, "%s", main_table->table_cards[5].suit);
 
+    mvwprintw(curr_client->win, 6, 21, "$ %i", main_table->table_money);
     //PLAYER
+    mvwprintw(curr_client->win, 8, 18, "$ %i", curr_client->session_money);
     wrefresh(curr_client->win);
 }
 void show_table_to_clients(struct server *main_server, struct table *main_table)
@@ -656,9 +656,11 @@ int main()
 
     setup_players_screen(main_server);
     get_blinds(main_server, main_table);
-    show_table_to_clients(main_server, main_table);
+    
     //handle_client_command(&main_server->clients[0]);
     handle_all_clients(main_server);
+    //put_cards_to_table(main_table, main_deck, 5);
+    show_table_to_clients(main_server, main_table);
     //show_all_deck_cards(*main_deck);
     show_clients_info(*main_server);
     sleep(5);
