@@ -31,7 +31,9 @@
 #define BUFF_SIZE       7
 #define CLIENT_CARDS    2
 #define START_SES_MON   0
-
+#define FLOP            0
+#define TURN            1
+#define RIVER           2
 #define MAX_MSG_SIZE    15
 #define MAX_TABLE_CARDS 5
 #define BIG_BLIND       100
@@ -496,7 +498,7 @@ void handle_client_command(struct client *curr_client)
     while (curr_client->is_folded != 1) {
         int bytes_received = 0;
         int ret;
-
+        werase(curr_client->win);
         printf("Awaiting client command...\n");
 
         while (bytes_received < BUFF_SIZE) {
@@ -605,7 +607,7 @@ void get_blinds(struct server *main_server, struct table *main_table)
     get_small_blind(main_server, main_table);
 }
 
-void show_table_to_client(struct client *curr_client, struct table *main_table)
+/*void show_table_to_client(struct client *curr_client, struct table *main_table)
 {
     set_term(curr_client->scr);
     //curr_client->win = newwin(13, 42, 1, 2);
@@ -629,12 +631,50 @@ void show_table_to_client(struct client *curr_client, struct table *main_table)
     //PLAYER
     mvwprintw(curr_client->win, 8, 18, "$ %i", curr_client->session_money);
     wrefresh(curr_client->win);
+}*/
+void show_table_to_client(struct client *curr_client, struct table *main_table, struct server *main_server) {
+    set_term(curr_client->scr);
+
+    // MENU
+    mvwprintw(curr_client->win, 0, 0, "[F]old");
+    mvwprintw(curr_client->win, 0, 7, "[C]heck");
+    mvwprintw(curr_client->win, 0, 15, "[B]et'number'");
+
+    // TABLE CARDS
+    mvwprintw(curr_client->win, 5, 5, "%s", main_table->table_cards[0].number);
+    mvwprintw(curr_client->win, 5, 7, "%s", main_table->table_cards[0].suit);
+    mvwprintw(curr_client->win, 5, 9, "%s", main_table->table_cards[1].number);
+    mvwprintw(curr_client->win, 5, 11, "%s", main_table->table_cards[1].suit);
+    mvwprintw(curr_client->win, 5, 13, "%s", main_table->table_cards[2].number);
+    mvwprintw(curr_client->win, 5, 15, "%s", main_table->table_cards[2].suit);
+    mvwprintw(curr_client->win, 5, 17, "%s", main_table->table_cards[3].number);
+    mvwprintw(curr_client->win, 5, 19, "%s", main_table->table_cards[3].suit);
+    mvwprintw(curr_client->win, 5, 21, "%s", main_table->table_cards[4].number);
+    mvwprintw(curr_client->win, 5, 23, "%s", main_table->table_cards[4].suit);
+
+    mvwprintw(curr_client->win, 6, 21, "$ %i", main_table->table_money);
+
+    // CURRENT PLAYER'S INFORMATION
+    mvwprintw(curr_client->win, 8, 18, "$ %i", curr_client->session_money);
+    mvwprintw(curr_client->win, 9, 0, "Your cards: %s%s %s%s", curr_client->cards[0].number, curr_client->cards[0].suit, curr_client->cards[1].number, curr_client->cards[1].suit);
+    mvwprintw(curr_client->win, 10, 0, "Your bet: $%i", curr_client->turn_money);
+
+    // OTHER PLAYERS' INFORMATION
+    int row = 12;
+    for (int i = 0; i < main_server->desc_count; i++) {
+        if (curr_client->descriptor != main_server->clients[i].descriptor && main_server->clients[i].connected) {
+            mvwprintw(curr_client->win, row++, 0, "%s's bet: $%i", main_server->clients[i].nickname, main_server->clients[i].turn_money);
+            mvwprintw(curr_client->win, row++, 0, "%s's money: $%i", main_server->clients[i].nickname, main_server->clients[i].session_money);
+        }
+    }
+
+    wrefresh(curr_client->win);
 }
 void show_table_to_clients(struct server *main_server, struct table *main_table)
 {
     int i;
     for(i = 0; i < main_server->desc_count; i ++){
-        show_table_to_client(&(main_server->clients[i]), main_table);
+        show_table_to_client(&(main_server->clients[i]), main_table, main_server);
     }
 }
 int main()
@@ -663,7 +703,7 @@ int main()
     show_table_to_clients(main_server, main_table);
     //show_all_deck_cards(*main_deck);
     show_clients_info(*main_server);
-    sleep(5);
+    sleep(100);
     return 0;
 
 }
